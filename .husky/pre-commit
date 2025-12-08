@@ -1,0 +1,28 @@
+echo ""
+echo "🚀 Pre-commit checks starting..."
+echo "================================"
+echo ""
+
+# Step 1: Check for disable comments
+echo "📋 Step 1/2: Checking for disable comments..."
+pnpm check:no-disable
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Commit blocked! Fix the disable comments first."
+  exit 1
+fi
+
+# Step 2: Run Biome on staged files
+echo ""
+echo "📋 Step 2/2: Running Biome linter & formatter..."
+pnpm lint-staged
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Commit blocked! Fix the linting errors first."
+  exit 1
+fi
+
+echo ""
+echo "================================"
+echo "✅ All checks passed! Committing..."
+echo ""

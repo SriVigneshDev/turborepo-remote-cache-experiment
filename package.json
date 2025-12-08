@@ -2,14 +2,24 @@
   "name": "turborepo-remote-cache-experiment",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check --write .",
+    "check:strict": "biome check --write --no-ignore .",
+    "check:no-disable": "node scripts/check-no-disable.mjs",
+    "validate": "pnpm check:no-disable && pnpm check:strict",
+    "prepare": "husky",
+    "check-types": "turbo run type-check",
+    "pre-build-checks:ci": "turbo run pre-build-checks:ci",
+    "biome-check:ci": "biome check ."
   },
   "devDependencies": {
-    "prettier": "^3.6.2",
+    "@biomejs/biome": "^2.3.8",
+    "@repo/biome-config": "workspace:*",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "turbo": "^2.6.3",
     "typescript": "5.9.2"
   },

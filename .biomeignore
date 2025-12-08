@@ -1,0 +1,48 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+**/dist
+build
+**/build
+.next
+**/.next
+
+# Cache
+.turbo
+**/.turbo
+.cache
+**/.cache
+coverage
+**/coverage
+
+# Generated files
+*.min.js
+**/*.min.js
+*.gen.ts
+**/*.gen.ts
+*.generated.ts
+**/*.generated.ts
+next-env.d.ts
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Public assets (don't lint)
+public
+**/public
+
+# shadcn/ui components (auto-generated)
+**/components/ui
+
+# Storybook
+storybook-static
+.storybook
+
+# Other
+.vercel
+.contentlayer
