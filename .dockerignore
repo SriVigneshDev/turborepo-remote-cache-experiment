@@ -1,0 +1,97 @@
+# ============================================
+# Git
+# ============================================
+.git
+.gitignore
+.gitattributes
+
+# ============================================
+# Dependencies (installed fresh in Docker)
+# ============================================
+node_modules
+**/node_modules
+
+# ============================================
+# Build outputs (rebuilt in Docker)
+# ============================================
+.next
+**/.next
+dist
+**/dist
+.turbo
+**/.turbo
+out
+**/out
+build
+**/build
+
+# ============================================
+# Environment files (secrets - never copy)
+# ============================================
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+
+# ============================================
+# IDE and editors
+# ============================================
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ============================================
+# Testing
+# ============================================
+coverage
+**/coverage
+.nyc_output
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+__tests__
+**/__tests__
+cypress
+playwright
+e2e
+
+# ============================================
+# Documentation (not needed in image)
+# ============================================
+*.md
+!README.md
+docs
+LICENSE
+CHANGELOG*
+
+# ============================================
+# Docker files (prevent recursive issues)
+# ============================================
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# ============================================
+# CI/CD
+# ============================================
+.github
+.gitlab-ci.yml
+.circleci
+jenkinsfile
+Jenkinsfile
+
+# ============================================
+# Misc
+# ============================================
+*.log
+*.tgz
+*.tar.gz
+*.zip
+.vercel
+.netlify
+storybook-static
