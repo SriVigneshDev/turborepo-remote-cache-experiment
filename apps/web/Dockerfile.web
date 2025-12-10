@@ -1,77 +1,145 @@
 # ============================================
-# 📦 BASE STAGE
+# 📦 BASE STAGE (Build) - Debian for performance
 # ============================================
-FROM node:22-alpine AS base
+# Why Debian slim instead of Alpine for build stage?
+# - Debian uses glibc (faster compilation, ~75% speed improvement)
+# - Alpine uses musl (slower for building, but smaller)
+# - Build performance matters more than image size here
+# - Final runtime still uses Alpine (small + secure)
+FROM node:22-slim AS base
 
 # --- Enable BuildKit inline cache for Docker registry caching ---
+# Allows Docker to cache layers in your container registry
+# Speeds up builds when using registry-based caching
 ARG BUILDKIT_INLINE_CACHE=1
-
-# --- System dependencies ---
-# libc6-compat: Required for Alpine Linux compatibility with some npm packages
-RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
+# --- System dependencies ---
+# ca-certificates: Required for HTTPS requests (npm registry, turbo remote cache)
+# rm -rf /var/lib/apt/lists/*: Removes apt cache to reduce image size
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # --- Set up pnpm global directory ---
+# PNPM_HOME: Directory where pnpm stores global packages
+# PATH: Allows running globally installed packages (like turbo)
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
-# --- Install pnpm (locked version matching packageManager in package.json) ---
+# --- Install pnpm ---
+# corepack: Node.js built-in package manager manager
+# Locked version (9.14.2): Ensures reproducible builds
+# Should match "packageManager" field in package.json
 RUN corepack enable && corepack prepare pnpm@9.14.2 --activate
 
-# --- Install turbo globally for monorepo build orchestration ---
+# --- Install turbo globally ---
+# Turbo: Monorepo build orchestration tool
+# Used for pruning and building with remote cache
+# ^2.6.3: Allows minor/patch updates for security fixes
 RUN pnpm add -g turbo@^2.6.3
 
 # ============================================
 # ✂️ PRUNE STAGE - Extract only what "web" needs
 # ============================================
+# Creates a minimal subset of the monorepo
+# Only includes packages that "web" app depends on
+# Dramatically reduces build context and improves caching
 FROM base AS pruner
 
 # --- Copy entire monorepo ---
+# This is the only stage that needs the full codebase
 COPY . .
 
 # --- Prune: Creates minimal subset for "web" app ---
-# Output: /app/out/json/ (package files) and /app/out/full/ (source)
-# This excludes apps/docs and any packages not needed by web
+# Output structure:
+#   /app/out/json/  → package.json files only (for dependency caching)
+#   /app/out/full/  → Full source code (only what web needs)
+#
+# Benefits:
+#   - Excludes unrelated apps (e.g., apps/docs, apps/api)
+#   - Excludes unused packages
+#   - Smaller build context = faster builds
+#   - Better layer caching
 RUN turbo prune web --docker
 
 # ============================================
-# 🔨 BUILD STAGE
+# 🔨 BUILD STAGE - Install deps & compile
 # ============================================
+# Installs dependencies and builds the application
+# Uses Debian for faster compilation (glibc)
 FROM base AS builder
 
 # --- Build arguments for non-sensitive data only ---
-# NEXT_PUBLIC_*: Build-time environment variables baked into the app
+# ARG: Available only at build time
+# NEXT_PUBLIC_*: Will be baked into the JavaScript bundle
+# These are PUBLIC values - never put secrets here!
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_APP_URL
 
 # --- Build-time environment variables ---
-# NEXT_PUBLIC_* must be ENV (baked into JavaScript bundle at build time)
+# ENV: Converts ARG to environment variables for the build process
+# NEXT_PUBLIC_*: Required as ENV because Next.js reads them during build
+# NEXT_TELEMETRY_DISABLED: Disables Next.js anonymous telemetry
+# CI=true: Indicates running in CI environment (stricter checks)
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
     NEXT_TELEMETRY_DISABLED=1 \
     CI=true
 
 # --- Copy pruned package.json files (for dependency caching) ---
-# This layer is cached until dependencies change
+# Why copy json files first?
+#   - Docker caches layers based on file changes
+#   - package.json changes less frequently than source code
+#   - If package.json unchanged → pnpm install layer is cached
+#   - Saves 1-3 minutes on most builds
 COPY --from=pruner /app/out/json/ .
 
 # --- Install dependencies with cache ---
-# --mount=type=cache: Persists pnpm store across builds (faster installs)
-# --frozen-lockfile: Fail if lockfile is out of sync (ensures reproducibility)
-# --prefer-offline: Use cached packages when possible
+# --mount=type=cache: Persists pnpm store across builds
+#   - Located at /pnpm/store
+#   - Shared between all builds on same machine
+#   - Dramatically speeds up dependency installation
+# --frozen-lockfile: Fails if lockfile is out of sync
+#   - Ensures reproducible builds
+#   - Catches accidental dependency changes
+# --prefer-offline: Uses cached packages when possible
+#   - Reduces network requests
+#   - Faster in CI environments
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile --prefer-offline
 
 # --- Copy pruned source code ---
+# Copies only the source files needed for "web" app
+# Placed AFTER pnpm install to maximize layer caching
+# Any source code change only invalidates this layer and below
 COPY --from=pruner /app/out/full/ .
 
 # --- Build with Turbo Remote Cache ---
-# SECURE: Using BuildKit secrets (never stored in image layers)
-# --mount=type=secret: Mounts secret file at /run/secrets/<id>
-# Secrets are only available during this RUN command and not persisted
-# Remote cache is automatically enabled when TURBO_TOKEN and TURBO_TEAM are set
-# Default cache behavior: local:rw,remote:rw (read/write both caches)
+#
+# SECURITY: Using BuildKit secrets
+#   - --mount=type=secret: Mounts secret at /run/secrets/<id>
+#   - Secrets are NEVER stored in image layers
+#   - Only available during this RUN command
+#   - Cannot be extracted from final image
+#   - required=true: Build fails if secrets not provided
+#
+# TURBO REMOTE CACHE:
+#   - Caches build outputs in Vercel's cloud
+#   - Shared across all team members and CI
+#   - Can reduce build time from 5min to 10sec
+#   - TURBO_TOKEN: API token for authentication
+#   - TURBO_TEAM: Team identifier for cache namespace
+#
+# LOCAL CACHE:
+#   - --mount=type=cache,target=.turbo: Local cache directory
+#   - Persists between builds on same machine
+#   - Works alongside remote cache
+#
+# BUILD FILTER:
+#   - --filter=web...: Builds "web" and all its dependencies
+#   - The "..." means include all dependencies
 RUN --mount=type=cache,id=turbo-cache,target=.turbo \
     --mount=type=secret,id=TURBO_TOKEN,required=true \
     --mount=type=secret,id=TURBO_TEAM,required=true \
@@ -80,39 +148,119 @@ RUN --mount=type=cache,id=turbo-cache,target=.turbo \
     turbo build --filter=web...
 
 # ============================================
-# 🚀 PRODUCTION STAGE - Minimal Alpine (~60MB)
+# 🚀 PRODUCTION STAGE - Minimal Alpine Runtime
 # ============================================
+# Why Alpine for runtime?
+#   - Tiny base image (~5MB vs ~100MB for Debian)
+#   - Smaller attack surface (fewer packages = fewer vulnerabilities)
+#   - Faster container startup
+#   - Lower memory footprint
+#
+# Why not Alpine for build stage?
+#   - Alpine uses musl libc (slower compilation)
+#   - Debian uses glibc (faster compilation)
+#   - Build stage is discarded anyway
 FROM alpine:3.21 AS runner
 
+# --- Image metadata ---
+# OCI standard labels for container identification
+# Useful for container registries and orchestration tools
+LABEL org.opencontainers.image.title="web"
+LABEL org.opencontainers.image.description="Web application"
+
 # --- Minimal runtime dependencies ---
-# nodejs: Only the runtime (no npm/yarn/corepack) - keeps image small
-# tini: Lightweight init system (~30KB) for proper signal handling
-#       Solves PID 1 problem - ensures graceful shutdown on SIGTERM
+# nodejs: Only the runtime (no npm/yarn/corepack)
+#   - Keeps image small (~50MB vs ~200MB with full Node)
+#   - We don't need package managers at runtime
+# tini: Lightweight init system (~30KB)
+#   - Solves the "PID 1 problem"
+#   - Properly forwards signals (SIGTERM, SIGINT)
+#   - Reaps zombie processes
+#   - Without tini: Container ignores SIGTERM, waits 10s, gets SIGKILL
+#   - With tini: Graceful shutdown, connections drain properly
 RUN apk add --no-cache nodejs tini
 
 # --- Create non-root user for security ---
-# Running as non-root prevents container escape attacks
+# Why run as non-root?
+#   - Principle of least privilege
+#   - Prevents container escape attacks
+#   - Limits damage if app is compromised
+#   - Required by many security policies (PCI-DSS, SOC2)
+#
+# addgroup -g 1001 -S nodejs:
+#   - Creates system group (-S) with GID 1001
+# adduser -S nextjs -u 1001:
+#   - Creates system user (-S) with UID 1001
+#   - UID/GID 1001 is convention for app users
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
 WORKDIR /app
 
 # --- Copy standalone build output ---
-# Only the files needed to run the app (~15MB vs ~500MB full node_modules)
+# Next.js standalone output includes:
+#   - Minimal Node.js server
+#   - Only required node_modules (traced dependencies)
+#   - Compiled application code
+#
+# Size comparison:
+#   - Full node_modules: ~500MB
+#   - Standalone output: ~15MB
+#
+# --chown=nextjs:nodejs: Sets correct ownership
+#   - Files owned by non-root user
+#   - Required for security
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 
 # --- Copy static assets ---
-# Static files (JS, CSS, images) generated by Next.js build
+# Static files generated by Next.js build:
+#   - JavaScript bundles
+#   - CSS files
+#   - Optimized images
+#   - Font files
+#
+# These are served directly by Next.js server
+# In production, consider CDN for better performance
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 
 # --- Copy public files ---
-# Public folder contents (favicon, robots.txt, etc.)
+# Public folder contents:
+#   - favicon.ico
+#   - robots.txt
+#   - sitemap.xml
+#   - Any static assets not processed by webpack
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
 # --- Switch to non-root user ---
+# All commands after this run as "nextjs" user
+# Container starts as non-root
 USER nextjs
 
 # --- Runtime environment variables ---
+# NODE_ENV=production:
+#   - Enables production optimizations
+#   - Disables development warnings
+#   - Required for Next.js production mode
+#
+# PORT=3000:
+#   - Port the application listens on
+#   - Can be overridden at runtime
+#
+# HOSTNAME="0.0.0.0":
+#   - Binds to all network interfaces
+#   - Required for container networking
+#   - "localhost" would only work inside container
+#
+# NODE_OPTIONS="--max-old-space-size=512":
+#   - Limits Node.js heap memory to 512MB
+#   - Prevents memory leaks from crashing host
+#   - Adjust based on your app's needs
+#   - Typical values: 256MB (small), 512MB (medium), 1024MB (large)
+#
+# NEXT_TELEMETRY_DISABLED=1:
+#   - Disables Next.js anonymous telemetry
+#   - Reduces network requests
+#   - Privacy consideration
 ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME="0.0.0.0" \
@@ -120,13 +268,25 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 
 # --- Expose port ---
+# Documents which port the container listens on
+# Does NOT actually publish the port
+# Use -p 3000:3000 when running container
 EXPOSE 3000
 
 # --- Use tini as init system ---
-# Ensures proper signal handling and zombie process reaping
-# Without tini: Container ignores SIGTERM, waits 10s, gets SIGKILL
-# With tini: Graceful shutdown, connections drain properly
+# ENTRYPOINT: Command that always runs
+# tini receives all signals and forwards them properly
+# "--" separates tini args from the actual command
+#
+# Signal handling with tini:
+#   SIGTERM → tini → node → graceful shutdown
+#
+# Without tini:
+#   SIGTERM → node (PID 1, ignores signal) → 10s timeout → SIGKILL
 ENTRYPOINT ["/sbin/tini", "--"]
 
 # --- Start application ---
+# CMD: Default command (can be overridden)
+# Runs the Next.js standalone server
+# Path matches the standalone output structure
 CMD ["node", "apps/web/server.js"]

@@ -10,6 +10,7 @@
 # ============================================
 node_modules
 **/node_modules
+.pnpm-store
 
 # ============================================
 # Build outputs (rebuilt in Docker)
@@ -56,6 +57,8 @@ coverage
 **/*.spec.tsx
 __tests__
 **/__tests__
+__mocks__
+**/__mocks__
 cypress
 playwright
 e2e
@@ -95,3 +98,7 @@ Jenkinsfile
 .vercel
 .netlify
 storybook-static
+tmp
+temp
+*.tmp
+*.bak
