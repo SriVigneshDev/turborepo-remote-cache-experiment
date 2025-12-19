@@ -1,22 +1,22 @@
-import Image, { type ImageProps } from "next/image";
-import { Button } from "@repo/ui/button";
-import styles from "./page.module.css";
+import Image, { type ImageProps } from 'next/image'
+import styles from './page.module.css'
+import { Button } from '@repo/ui/button'
 
-type Props = Omit<ImageProps, "src"> & {
-  srcLight: string;
-  srcDark: string;
-};
+type Props = Omit<ImageProps, 'src'> & {
+  srcLight: string
+  srcDark: string
+}
 
 const ThemeImage = (props: Props) => {
-  const { srcLight, srcDark, ...rest } = props;
+  const { srcLight, srcDark, ...rest } = props
 
   return (
     <>
       <Image {...rest} src={srcLight} className="imgLight" />
       <Image {...rest} src={srcDark} className="imgDark" />
     </>
-  );
-};
+  )
+}
 
 export default function Home() {
   return (
@@ -29,7 +29,7 @@ export default function Home() {
           alt="Turborepo logo"
           width={180}
           height={38}
-          priority
+          priority={true}
         />
         <ol>
           <li>
@@ -74,7 +74,7 @@ export default function Home() {
           rel="noopener noreferrer"
         >
           <Image
-            aria-hidden
+            aria-hidden={true}
             src="/window.svg"
             alt="Window icon"
             width={16}
@@ -88,7 +88,7 @@ export default function Home() {
           rel="noopener noreferrer"
         >
           <Image
-            aria-hidden
+            aria-hidden={true}
             src="/globe.svg"
             alt="Globe icon"
             width={16}
@@ -98,5 +98,5 @@ export default function Home() {
         </a>
       </footer>
     </div>
-  );
+  )
 }
