@@ -1,0 +1,44 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "workspaces": {
+    "apps/*": {
+      "entry": [
+        "app/layout.tsx",
+        "app/**/page.tsx",
+        "app/**/loading.tsx",
+        "app/**/error.tsx",
+        "app/**/not-found.tsx",
+        "middleware.ts"
+      ],
+      "project": ["**/*.{ts,tsx}"],
+      "ignore": ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"]
+    },
+    "packages/*": {
+      "entry": [
+        "src/**/index.ts",
+        "src/**/index.tsx",
+        "index.ts",
+        "index.tsx",
+        "*.json"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "**/*.{ts,tsx,json,mjs,js}"],
+      "ignore": ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"]
+    }
+  },
+  "ignore": [
+    "**/*.config.{ts,js,mjs}",
+    "**/.next/**",
+    "**/dist/**",
+    "**/node_modules/**",
+    "scripts/**",
+    "packages/typescript-config/**"
+  ],
+  "ignoreDependencies": [
+    "@types/*",
+    "@repo/*",
+    "cz-git",
+    "czg",
+    "unlighthouse"
+  ],
+  "ignoreExportsUsedInFile": true
+}
