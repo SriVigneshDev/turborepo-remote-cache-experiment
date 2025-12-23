@@ -13,6 +13,7 @@
     "@repo/api": "workspace:*",
     "@repo/query": "workspace:*",
     "@repo/ui": "workspace:*",
+    "@repo/dev-tools": "workspace:*",
     "@tanstack/react-query": "^5.90.12",
     "@tanstack/react-query-devtools": "^5.91.1",
     "next": "^16.0.7",

@@ -58,7 +58,12 @@ const nextConfig: NextConfig = {
   // }
   //
   // DON'T add: react, next, axios (these are pre-compiled npm packages)
-  transpilePackages: ['@repo/ui', '@repo/query', '@repo/api'],
+  transpilePackages: [
+    '@repo/ui',
+    '@repo/query',
+    '@repo/api',
+    '@repo/dev-tools',
+  ],
 
   // ============================================
   // RECOMMENDED SETTINGS

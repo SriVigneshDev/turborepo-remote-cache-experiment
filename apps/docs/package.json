@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@repo/ui": "workspace:*",
+    "@repo/dev-tools": "workspace:*",
     "next": "^16.0.7",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
