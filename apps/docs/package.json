@@ -11,12 +11,12 @@
   },
   "dependencies": {
     "@repo/ui": "workspace:*",
-    "@repo/dev-tools": "workspace:*",
     "next": "^16.0.7",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@repo/dev-tools": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",

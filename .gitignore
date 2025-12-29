@@ -39,3 +39,6 @@ yarn-error.log*
 
 # Secrets - never commit
 .secrets/
+
+# Unlighthouse reports
+.unlighthouse/

@@ -17,8 +17,8 @@
     "commit": "czg",
     "knip": "knip",
     "knip:fix": "knip --fix",
-    "lighthouse": "turbo lighthouse",
-    "lighthouse:web": "turbo lighthouse --filter=@repo/web"
+    "lighthouse:web": "unlighthouse --site http://localhost:3000",
+    "lighthouse:docs": "unlighthouse --site http://localhost:3001"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.8",
@@ -34,7 +34,7 @@
     "typescript": "5.9.2",
     "unlighthouse": "^0.17.4"
   },
-  "packageManager": "pnpm@10.26.1",
+  "packageManager": "pnpm@10.26.2",
   "engines": {
     "node": ">=18"
   },
