@@ -8,6 +8,27 @@ import type {
   TTFBMetricWithAttribution,
 } from 'web-vitals/attribution'
 
+const highlightElement = (
+  selector: string | undefined,
+  color: string
+): void => {
+  if (!selector) {
+    return
+  }
+  try {
+    const el = document.querySelector(selector) as HTMLElement
+    if (el) {
+      el.style.outline = `4px solid ${color}`
+      console.log('👆 SOURCE ELEMENT:', el)
+      setTimeout(() => {
+        el.style.outline = ''
+      }, 5000)
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export const handleCLS = (metric: CLSMetricWithAttribution): void => {
   const emoji = getRatingEmoji(metric.rating)
   const { attribution } = metric
@@ -16,14 +37,19 @@ export const handleCLS = (metric: CLSMetricWithAttribution): void => {
   logMetricEntry('Score', metric.value.toFixed(4))
   logMetricEntry('Rating', metric.rating)
 
+  // 🔴 ADD THIS - Shows the actual element
   if (attribution.largestShiftTarget) {
-    logMetricEntry('Element', attribution.largestShiftTarget)
+    logMetricEntry('🎯 SOURCE', attribution.largestShiftTarget)
+    highlightElement(attribution.largestShiftTarget, 'orange')
   }
-  if (attribution.largestShiftTime) {
-    logMetricEntryMs('Shift Time', attribution.largestShiftTime)
-  }
-  if (attribution.largestShiftValue) {
-    logMetricEntry('Shift Value', attribution.largestShiftValue)
+
+  // 🔴 ADD THIS - Shows what caused the shift
+  const lcEntry = attribution.largestShiftEntry
+  if (lcEntry?.sources && lcEntry.sources.length > 0) {
+    console.log('📍 Shift Sources:')
+    lcEntry.sources.forEach((source, i) => {
+      console.log(`  ${i + 1}. Node:`, source.node)
+    })
   }
 
   console.groupEnd()
@@ -37,24 +63,36 @@ export const handleLCP = (metric: LCPMetricWithAttribution): void => {
   logMetricEntryMs('Time', metric.value)
   logMetricEntry('Rating', metric.rating)
 
-  if (attribution.target) {
-    logMetricEntry('Element', attribution.target)
+  // 🔴 ADD THIS - Shows the actual LCP element
+  if (attribution.lcpEntry?.element) {
+    const el = attribution.lcpEntry.element as HTMLElement
+    console.log('🎯 SOURCE ELEMENT:', el)
+    console.log('   Tag:', el.tagName)
+    console.log('   ID:', el.id || '(none)')
+    console.log('   Class:', el.className || '(none)')
+
+    // If image - show src
+    if (el.tagName === 'IMG') {
+      const img = el as HTMLImageElement
+      console.log('   Image URL:', img.src)
+      console.warn('   💡 FIX: Add priority prop → <Image priority />')
+    }
+
+    // Highlight it
+    el.style.outline = '4px solid red'
+    setTimeout(() => {
+      el.style.outline = ''
+    }, 5000)
   }
-  if (attribution.url) {
-    logMetricEntry('Resource URL', attribution.url)
-  }
-  if (attribution.timeToFirstByte) {
-    logMetricEntryMs('TTFB', attribution.timeToFirstByte)
-  }
-  if (attribution.resourceLoadDelay) {
-    logMetricEntryMs('Resource Load Delay', attribution.resourceLoadDelay)
-  }
-  if (attribution.resourceLoadDuration) {
-    logMetricEntryMs('Resource Load Duration', attribution.resourceLoadDuration)
-  }
-  if (attribution.elementRenderDelay) {
-    logMetricEntryMs('Element Render Delay', attribution.elementRenderDelay)
-  }
+
+  // 🔴 ADD THIS - Shows breakdown
+  console.log('⏱️ TIME BREAKDOWN:')
+  console.table({
+    'Server (TTFB)': `${attribution.timeToFirstByte?.toFixed(0)}ms`,
+    'Load Delay': `${attribution.resourceLoadDelay?.toFixed(0)}ms`,
+    'Load Duration': `${attribution.resourceLoadDuration?.toFixed(0)}ms`,
+    'Render Delay': `${attribution.elementRenderDelay?.toFixed(0)}ms`,
+  })
 
   console.groupEnd()
 }
@@ -67,23 +105,37 @@ export const handleINP = (metric: INPMetricWithAttribution): void => {
   logMetricEntryMs('Delay', metric.value)
   logMetricEntry('Rating', metric.rating)
 
+  // 🔴 ADD THIS
   if (attribution.interactionTarget) {
-    logMetricEntry('Target', attribution.interactionTarget)
+    logMetricEntry('🎯 SOURCE', attribution.interactionTarget)
+    highlightElement(attribution.interactionTarget, 'purple')
   }
-  if (attribution.interactionType) {
-    logMetricEntry('Event Type', attribution.interactionType)
-  }
-  if (attribution.interactionTime) {
-    logMetricEntryMs('Interaction Time', attribution.interactionTime)
-  }
-  if (attribution.inputDelay) {
-    logMetricEntryMs('Input Delay', attribution.inputDelay)
-  }
-  if (attribution.processingDuration) {
-    logMetricEntryMs('Processing Duration', attribution.processingDuration)
-  }
-  if (attribution.presentationDelay) {
-    logMetricEntryMs('Presentation Delay', attribution.presentationDelay)
+
+  // 🔴 ADD THIS - Shows what's slow
+  console.log('⏱️ TIME BREAKDOWN:')
+  console.table({
+    'Input Delay': `${attribution.inputDelay?.toFixed(0)}ms`,
+    Processing: `${attribution.processingDuration?.toFixed(0)}ms`,
+    Presentation: `${attribution.presentationDelay?.toFixed(0)}ms`,
+  })
+
+  //  Shows the slow event handlers
+  const longTasks = attribution.longAnimationFrameEntries ?? []
+
+  if (longTasks.length > 0) {
+    console.log('🐌 SLOW SCRIPTS:')
+
+    for (const task of longTasks) {
+      const scripts = task.scripts ?? []
+
+      if (scripts.length > 0) {
+        for (const script of scripts) {
+          console.log('   Script:', script.sourceURL || 'inline')
+          console.log('   Function:', script.sourceFunctionName || 'anonymous')
+          console.log('   Duration:', `${script.duration?.toFixed(0)}ms`)
+        }
+      }
+    }
   }
 
   console.groupEnd()
@@ -97,12 +149,12 @@ export const handleFCP = (metric: FCPMetricWithAttribution): void => {
   logMetricEntryMs('Time', metric.value)
   logMetricEntry('Rating', metric.rating)
 
-  if (attribution.timeToFirstByte) {
-    logMetricEntryMs('TTFB', attribution.timeToFirstByte)
-  }
-  if (attribution.firstByteToFCP) {
-    logMetricEntryMs('First Byte to FCP', attribution.firstByteToFCP)
-  }
+  // 🔴 ADD THIS
+  console.log('⏱️ TIME BREAKDOWN:')
+  console.table({
+    TTFB: `${attribution.timeToFirstByte?.toFixed(0)}ms`,
+    'First Byte → FCP': `${attribution.firstByteToFCP?.toFixed(0)}ms`,
+  })
 
   console.groupEnd()
 }
@@ -115,18 +167,14 @@ export const handleTTFB = (metric: TTFBMetricWithAttribution): void => {
   logMetricEntryMs('Time', metric.value)
   logMetricEntry('Rating', metric.rating)
 
-  if (attribution.waitingDuration) {
-    logMetricEntryMs('Waiting Duration', attribution.waitingDuration)
-  }
-  if (attribution.dnsDuration) {
-    logMetricEntryMs('DNS Duration', attribution.dnsDuration)
-  }
-  if (attribution.connectionDuration) {
-    logMetricEntryMs('Connection Duration', attribution.connectionDuration)
-  }
-  if (attribution.requestDuration) {
-    logMetricEntryMs('Request Duration', attribution.requestDuration)
-  }
+  // 🔴 ADD THIS
+  console.log('⏱️ TIME BREAKDOWN:')
+  console.table({
+    Waiting: `${attribution.waitingDuration?.toFixed(0)}ms`,
+    DNS: `${attribution.dnsDuration?.toFixed(0)}ms`,
+    Connection: `${attribution.connectionDuration?.toFixed(0)}ms`,
+    Request: `${attribution.requestDuration?.toFixed(0)}ms`,
+  })
 
   console.groupEnd()
 }

@@ -80,6 +80,9 @@ const nextConfig: NextConfig = {
   // - Faster page loads
   // Note: If using nginx/Cloudflare, they also handle compression
   compress: true,
+  experimental: {
+    optimizeCss: true,
+  },
 }
 
 export default nextConfig

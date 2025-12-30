@@ -9,7 +9,6 @@
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.90.12",
-    "@tanstack/react-query-devtools": "^5.91.1",
     "react": "^19.0.0"
   },
   "devDependencies": {
