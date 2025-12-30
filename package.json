@@ -16,7 +16,7 @@
     "pre-build-checks:ci": "turbo run pre-build-checks:ci",
     "biome-check:ci": "biome check .",
     "commit": "czg",
-    "knip": "knip",
+    "knip": "knip --no-config-hints",
     "knip:fix": "knip --fix",
     "lighthouse:web": "unlighthouse --site http://localhost:3000",
     "lighthouse:docs": "unlighthouse --site http://localhost:3001"
