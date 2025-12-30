@@ -14,7 +14,21 @@ import {
   logWarning,
 } from './utils'
 
-// 🔴 ADD THIS - Detects long blocking tasks
+const initReactScan = async (): Promise<void> => {
+  try {
+    const { scan } = await import('react-scan')
+    scan({
+      enabled: true,
+      log: true,
+      showToolbar: true,
+    })
+    logSuccess('React-Scan', 'Render detection enabled')
+  } catch (err) {
+    logWarning('React-Scan', 'Failed to load (optional tool)', err)
+  }
+}
+
+//  - Detects long blocking tasks
 const initLongTaskObserver = (): void => {
   try {
     const observer = new PerformanceObserver((list) => {
@@ -42,7 +56,7 @@ const initLongTaskObserver = (): void => {
             }
           }
 
-          // 🔴 ADD THIS - Get stack trace
+          //  - Get stack trace
           console.trace('Stack trace for long task')
 
           console.groupEnd()
@@ -56,7 +70,7 @@ const initLongTaskObserver = (): void => {
   }
 }
 
-// 🔴 ADD THIS - Lists all render-blocking resources
+//  - Lists all render-blocking resources
 const logBlockingResources = (): void => {
   setTimeout(() => {
     const resources = performance.getEntriesByType(
@@ -100,10 +114,10 @@ const initWebVitals = async (): Promise<void> => {
 
 const initDevTools = async (): Promise<void> => {
   logHeader('Initializing Dev Tools...')
-
+  await initReactScan()
   await initWebVitals()
-  initLongTaskObserver() // 🔴 ADD THIS
-  logBlockingResources() // 🔴 ADD THIS
+  initLongTaskObserver() //
+  logBlockingResources() //
 
   logHeader('Dev Tools Ready!')
 }
