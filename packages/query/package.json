@@ -9,12 +9,12 @@
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.90.12",
-    "react": "^19.0.0"
+    "react": "^19.2.3"
   },
   "devDependencies": {
     "@tanstack/react-query": "^5.90.12",
     "@tanstack/react-query-devtools": "^5.91.1",
-    "@types/react": "^19.2.7",
+    "@types/react": "19.2.7",
     "react": "^19.2.3",
     "typescript": "^5.9.3"
   },

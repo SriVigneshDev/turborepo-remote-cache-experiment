@@ -10,14 +10,14 @@
     }
   },
   "devDependencies": {
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
     "react-scan": "^0.4.3",
     "web-vitals": "^5.1.0"
   },
   "peerDependencies": {
-    "next": "^16.0.7",
-    "react": "^19.2.2",
-    "react-dom": "^19.2.2"
+    "next": "^16.1.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   }
 }
